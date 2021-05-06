@@ -52,8 +52,7 @@ public class TextSearcher {
         /*
          * TODO
          */
-        words = Arrays.stream(fileContents.split("\\s+|(?=\\p{Punct})|(?<=\\p{Punct})")).sequential()
-                //.map(String::toLowerCase)
+        words = Arrays.stream(fileContents.split("(?=\\b)")).sequential()
                 .collect(Collectors.toCollection(LinkedList::new));
 
     }
@@ -70,12 +69,18 @@ public class TextSearcher {
          * TODO
          */
         List<String> res = new ArrayList<>();
-        int startIdx = 0, endIndex=words.size(),idx=0;
-		while (idx!=-1) {
-			idx = words.indexOf(queryWord);
-			if(idx==-1) break;
-			res.add(searchHelper(contextWords, idx));
-			words.remove(idx);
+        int startIdx = 0, endIndex=words.size(),idx=-1;
+        ListIterator listIterator= words.listIterator();
+		while (listIterator.hasNext()) {
+			if(String.valueOf(listIterator.next()).toLowerCase(Locale.ROOT).contains(queryWord.toLowerCase(Locale.ROOT))){
+				idx = listIterator.nextIndex();
+			}
+
+			if(idx>-1) {
+				res.add(searchHelper(contextWords, idx));
+				idx=-1;//reset the idx again
+			}
+			//words.remove(idx);
 		}
 		String[] ret = res.toArray(new String[res.size()]);
 		return ret;
@@ -84,34 +89,28 @@ public class TextSearcher {
 	private String searchHelper(int contextWords, int idx) {
 
 		LinkedList res= new LinkedList();
-		ListIterator<String> nextListIterator = null;
-		ListIterator<String> prevListIterator = null;
-		if (idx +1 < words.size() && words.listIterator(idx).hasNext()) {
-			nextListIterator = words.listIterator(idx +1);
+		ListIterator<String> nextListIterator = words.listIterator(idx);
+		ListIterator<String> prevListIterator = words.listIterator(idx);
 
-		}
 
-		if (idx-1>=0 && words.listIterator(idx).hasPrevious()) {
-			prevListIterator = words.listIterator(idx);
-		}
+
 		int i=0;
 		while (null != nextListIterator && i < contextWords && nextListIterator.hasNext()) {
 			String temp=nextListIterator.next();
 			res.addLast(temp);
-			if(!temp.matches("\\s+|(?=\\p{Punct})|(?<=\\p{Punct})"))
+			if(!temp.matches("\\W+"))
 				i++;
 		}
-		res.addFirst(words.get(idx));
-		System.out.println(i);
-		i=contextWords-1;
+
+		i=contextWords;
 		while (null != prevListIterator && i >= 0 && prevListIterator.hasPrevious()) {
 			String temp=prevListIterator.previous();
 			res.addFirst(temp);
-			if(!temp.matches("\\s+|(?=\\p{Punct})|(?<=\\p{Punct})"))
+			if(!temp.matches("\\W+"))
 				i--;
 		}
 
-		return String.valueOf(res.stream().collect(Collectors.joining(" ")));
+		return String.valueOf(res.stream().collect(Collectors.joining("")));
 	}
 
 	// Any needed utility classes can just go in this file.
