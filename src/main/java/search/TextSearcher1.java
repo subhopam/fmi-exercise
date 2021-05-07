@@ -11,7 +11,8 @@ import java.util.stream.Collectors;
  * TextSearcher implements a search interface to an underlying text file
  * consisting of the single method {@link #search(String, int)}.
  */
-public class TextSearcher {
+public class TextSearcher1 {
+	private Map<String,Set<Integer>> wordLookupMap;
     private LinkedList<String> words; // To store the string tokens in a doubly linked list to traverse either forward ot backward
 
     /**
@@ -22,7 +23,7 @@ public class TextSearcher {
      * @param f Input file.
      * @throws IOException
      */
-    public TextSearcher(File f) throws IOException {
+    public TextSearcher1(File f) throws IOException {
 
         FileReader r = null;
         try {
@@ -69,8 +70,22 @@ public class TextSearcher {
 		 *
 		 *
 		 */
-		words = Arrays.stream(fileContents.split("(?=\\b)")).sequential()
-                .collect(Collectors.toCollection(LinkedList::new)); // O(n) n is no of words caught by init
+		wordLookupMap=new HashMap<>();
+		words=new LinkedList<>();
+		TextTokenizer lexer = new TextTokenizer(fileContents,"[a-zA-Z0-9']+");
+		List<String> tokens = new ArrayList<>();
+		int i=0;
+		while (lexer.hasNext()) {
+			String temp=lexer.next();
+			words.offer(temp);
+			Set<Integer> tempList=new TreeSet<>();
+			tempList=wordLookupMap.getOrDefault(temp,new TreeSet<>());
+			tempList.add(Integer.valueOf(i));
+			wordLookupMap.put(temp.toLowerCase(Locale.ROOT),tempList);
+			i++;
+		}
+
+		//words = Arrays.stream(fileContents.split("(?=\\b)")).sequential().collect(Collectors.toCollection(LinkedList::new)); // O(n) n is no of words caught by init
 
     }
 
@@ -80,24 +95,16 @@ public class TextSearcher {
      *                     each side of the query word.
      * @return One context string for each time the query word appears in the file.
      */
-    public String[] search(String queryWord, int contextWords) {//
+    public String[] search(String queryWord, int contextWords) {
 
-
-        List<String> res = new ArrayList<>();
-        int startIdx = 0, endIndex=words.size(),idx=-1;
-        ListIterator listIterator= words.listIterator();
-		while (listIterator.hasNext()) {// O(n) n is the no of words in linkedlist
-			// Iterate over the linked list and find a match for the querykeyword
-			if(String.valueOf(listIterator.next()).toLowerCase(Locale.ROOT).contains(queryWord.toLowerCase(Locale.ROOT))){//case insensitive match
-				idx = listIterator.nextIndex();
-			}
-
-			if(idx>-1) {
+		List<String> res = new ArrayList<>();
+    	Set<Integer> indexSet= wordLookupMap.get(queryWord.toLowerCase(Locale.ROOT));
+		if(null!=indexSet && !indexSet.isEmpty()){
+			for(int idx: indexSet){
 				res.add(searchHelper(contextWords, idx));
-				idx=-1;//reset the idx again so that old value is not used in subsequent iteration
 			}
-
 		}
+
 		String[] ret = res.toArray(new String[res.size()]);
 		return ret;
     }
@@ -122,10 +129,10 @@ public class TextSearcher {
 		 * towards the end of the file starting from the found keyword index
 		 * O(1)+O(k) if 0<k<=n O(k)
 		 */
-		while (null != nextListIterator && i < contextWords && nextListIterator.hasNext()) {//O(n)
+		while (null != nextListIterator && i <= contextWords && nextListIterator.hasNext()) {//O(n)
 			String temp=nextListIterator.next();
 			res.addLast(temp);
-			if(!temp.matches("\\W+")) // for spaces and punctuations don't increment i
+			if(temp.matches("[a-zA-Z0-9']+")) // for spaces and punctuations don't increment i
 				i++;
 		}
 		/**
@@ -133,10 +140,10 @@ public class TextSearcher {
 		 * towards the start of the file starting from the found keyword index
 		 */
 		i=contextWords; // set i back to contextwords to retreat up to 0
-		while (null != prevListIterator && i >= 0 && prevListIterator.hasPrevious()) {//O(k)
+		while (null != prevListIterator && i > 0 && prevListIterator.hasPrevious()) {//O(k)
 			String temp=prevListIterator.previous();
 			res.addFirst(temp);
-			if(!temp.matches("\\W+"))// for spaces and punctuations don't decrement  i
+			if(temp.matches("[a-zA-Z0-9']+"))// for spaces and punctuations don't decrement  i
 				i--;
 		}
 
